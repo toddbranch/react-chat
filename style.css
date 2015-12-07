@@ -1,0 +1,59 @@
+ul {
+  list-style-type: none;
+}
+
+.application {
+  display: flex;
+}
+
+.rooms {
+}
+
+.room {
+  border: 1px solid black;
+  padding: 5px;
+}
+
+.room:hover {
+  cursor: pointer;
+  background-color: #eff;
+}
+
+.room-name {
+  text-decoration: underline;
+}
+
+.room.active {
+  background-color: #eee;
+}
+
+.unread {
+}
+
+.chat {
+  border: 1px solid black;
+  padding: 5px;
+}
+
+.messages {
+}
+
+.message {
+  display: flex;
+  width: 300px;
+  margin: 10px 0;
+}
+
+.message-name {
+  font-weight: bold;
+  margin-right: 10px;
+  width: 100px;
+}
+
+.message-content {
+  width: 200px;
+}
+
+.message-fields {
+  margin-bottom: 10px;
+}
