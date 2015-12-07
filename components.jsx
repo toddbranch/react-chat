@@ -1,3 +1,5 @@
+var store = Redux.createStore(reducer);
+
 var Message = React.createClass({
   render: function() {
     return (
@@ -30,10 +32,9 @@ var Messages = React.createClass({
 var Chat = React.createClass({
   render: function() {
     var room = this.props.room;
-
-    if (!room) {
-      return (<div></div>);
-    }
+    var messages = _.filter(this.props.messages, function(message) {
+      return message.room === room;
+    });
 
     return (
       <div className="chat">
@@ -50,14 +51,14 @@ var Chat = React.createClass({
             <div>Message:</div>
             <input
               type="text"
-              value={this.props.message}
-              onChange={this.props.updateMessage}
+              value={this.props.content}
+              onChange={this.props.updateContent}
             />
             <button onClick={this.props.sendMessage}>Send</button>
           </div>
         </div>
         <Messages
-          messages={room.messages}
+          messages={messages}
         />
       </div>
     );
@@ -66,26 +67,26 @@ var Chat = React.createClass({
 
 var Room = React.createClass({
   render: function() {
-    var room = this.props.room;
-    var unread = _.filter(room.messages, function(message) {
+    var messages = this.props.messages;
+    var unread = _.filter(messages, function(message) {
       return message.read === false;
     });
-    var message = room.messages[0];
-    var roomClasses  = room.active ? 'room active' : 'room'
+    var room = messages[0].room;
+    var roomClasses  = this.props.active === room ? 'room active' : 'room'
 
-    var that = this;
-    function changeRoom() {
-      that.props.changeRoom(room.name);
+    var changeRoom = this.props.changeRoom;
+    function makeRoomActive() {
+      changeRoom(room);
     }
 
     return (
-      <li className={roomClasses} onClick={changeRoom}>
+      <li className={roomClasses} onClick={makeRoomActive}>
         <div className="room-name">
-          {room.name}
+          {room}
         </div>
         <Message
           className="recent"
-          message={message}
+          message={messages[0]}
         />
         <div className="unread">
           {unread.length} unread
@@ -98,14 +99,21 @@ var Room = React.createClass({
 var Rooms = React.createClass({
   render: function() {
     var changeRoom = this.props.changeRoom;
+    var active = this.props.room;
+    var roomMessages = _.values(
+      _.groupBy(this.props.messages, function(message) {
+        return message.room;
+      })
+    );
 
     return (
       <ul className="rooms">
-        {this.props.rooms.map(function(room) {
+        {roomMessages.map(function(messages) {
           return (
             <Room
-              room={room}
-              key={room.name}
+              active={active}
+              messages={messages}
+              key={messages[0].room}
               changeRoom={changeRoom}
             />
           );
@@ -117,23 +125,20 @@ var Rooms = React.createClass({
 
 var Application = React.createClass({
   render: function() {
-    var rooms = this.props.rooms;
-    var activeRoom = _.find(rooms, function(room) {
-      return room.active === true;
-    });
-
     return (
       <div className="application">
         <Rooms
-          rooms={rooms}
+          messages={this.props.messages}
+          room={this.props.room}
           changeRoom={this.props.changeRoom}
         />
         <Chat
-          room={activeRoom}
+          messages={this.props.messages}
+          room={this.props.room}
           name={this.props.name}
           updateName={this.props.updateName}
-          message={this.props.message}
-          updateMessage={this.props.updateMessage}
+          content={this.props.content}
+          updateContent={this.props.updateContent}
           sendMessage={this.props.sendMessage}
         />
       </div>
@@ -142,37 +147,16 @@ var Application = React.createClass({
 });
 
 // this will be replaced with a call to the endpoint
-function getRooms() {
+function getMessages() {
   return [
-    {
-      name: 'Sales',
-      messages: [
-        {name: 'Jim', content: '@Dwight false.  The answer is Black Bear.  Fact: bears eat beats.  Bears.  Beets.  Battlestar Gallactica.'},
-        {name: 'Dwight', content: '@Jim stupid question.'},
-        {name: 'Jim', content: '@Dwight, what kind of bear is best?'}
-      ]
-    },
-    {
-      name: 'Party Planning',
-      messages: [
-        {name: 'Phyllis', content: 'We\'re doing the best we can, @Michael.'},
-        {name: 'Angela', content: 'Stop it @Michael!'},
-        {name: 'Michael', content: 'Happy Birthday Jesus. Sorry your party sucked.'}
-      ]
-    }
+    {name: 'Jim', content: '@Dwight, what kind of bear is best?', room: 'Sales'},
+    {name: 'Dwight', content: '@Jim stupid question.', room: 'Sales'},
+    {name: 'Jim', content: '@Dwight false.  The answer is Black Bear.  Fact: bears eat beats.  Bears.  Beets.  Battlestar Gallactica.', room: 'Sales'},
+    {name: 'Dwight', content: '@Michael!', room: 'Sales'},
+    {name: 'Michael', content: 'Happy Birthday Jesus. Sorry your party sucked.', room: 'Party Planning'},
+    {name: 'Angela', content: 'Stop it @Michael!', room: 'Party Planning'},
+    {name: 'Phyllis', content: 'We\'re doing the best we can, @Michael.', room: 'Party Planning'},
   ];
-}
-
-function changeRoom(name) {
-  store.dispatch({
-    type: 'CHANGE_ROOM',
-    room: name
-  });
-
-  store.dispatch({
-    type: 'READ_MESSAGES',
-    room: name
-  });
 }
 
 function updateName(e) {
@@ -182,10 +166,10 @@ function updateName(e) {
   });
 }
 
-function updateMessage(e) {
+function updateContent(e) {
   store.dispatch({
-    type: 'UPDATE_MESSAGE',
-    message: e.target.value
+    type: 'UPDATE_CONTENT',
+    content: e.target.value
   });
 }
 
@@ -195,36 +179,40 @@ function sendMessage() {
   });
 }
 
-(function intializeStore() {
-  var rooms = getRooms();
-  rooms.forEach(function(room) {
-    store.dispatch({
-      type: 'CREATE_ROOM',
-      name: room.name
-    });
+function changeRoom(room) {
+  store.dispatch({
+    type: 'CHANGE_ROOM',
+    room: room
+  });
+}
 
-    room.messages.forEach(function(message) {
-      store.dispatch({
-        type: 'CREATE_MESSAGE',
-        room: room.name,
-        name: message.name,
-        content: message.content
-      });
+(function intializeStore() {
+  var messages = getMessages();
+
+  messages.forEach(function(message) {
+    store.dispatch({
+      type: 'CREATE_MESSAGE',
+      name: message.name,
+      content: message.content,
+      room: message.room
     });
   });
 
-  changeRoom(rooms[0].name);
+  changeRoom(messages[0].room);
 }());
 
 function render() {
+  var state = store.getState();
+
   ReactDOM.render(
     <Application
-      rooms={store.getState().rooms}
+      messages={state.messages}
+      room={state.room}
       changeRoom={changeRoom}
-      name={store.getState().name}
+      name={state.name}
       updateName={updateName}
-      message={store.getState().message}
-      updateMessage={updateMessage}
+      content={state.content}
+      updateContent={updateContent}
       sendMessage={sendMessage}
     />,
     document.getElementById('root')

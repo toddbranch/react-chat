@@ -1,111 +1,172 @@
 describe('store', function() {
   beforeEach(function() {
-    store = Redux.createStore(reducer);
-  });
-
-  describe('CREATE_ROOM', function() {
-    it('creates a new room', function() {
-      store.dispatch({
-        type: 'CREATE_ROOM',
-        name: 'Dunder Mifflin'
-      });
-
-      expect(store.getState().rooms[0].name).toBe('Dunder Mifflin');
-    });
-
-    it('does not create a room with a duplicate name', function() {
-      store.dispatch({
-        type: 'CREATE_ROOM',
-        name: 'Dunder Mifflin'
-      });
-
-      store.dispatch({
-        type: 'CREATE_ROOM',
-        name: 'Dunder Mifflin'
-      });
-
-      expect(store.getState().rooms.length).toBe(1);
-    });
-
-    it('does not create a room without a name', function() {
-      store.dispatch({
-        type: 'CREATE_ROOM',
-      });
-
-      expect(store.getState().rooms.length).toBe(0);
-    });
+    this.store = Redux.createStore(reducer);
   });
 
   describe('CREATE_MESSAGE', function() {
-    beforeEach(function() {
-      store.dispatch({
-        type: 'CREATE_ROOM',
-        name: 'Dunder Mifflin'
-      });
-    });
-
     it('adds a new message to the specified room', function() {
-      store.dispatch({
+      this.store.dispatch({
         type: 'CREATE_MESSAGE',
         room: 'Dunder Mifflin',
         name: 'Dwight',
         content: '@Jim, stop putting my stuff in Jello!'
       });
 
-      var room = store.getState().rooms[0];
-      var message = store.getState().rooms[0].messages[0];
+      var message = this.store.getState().messages[0];
 
-      expect(room.name).toBe('Dunder Mifflin');
+      expect(message.room).toBe('Dunder Mifflin');
       expect(message.name).toBe('Dwight');
       expect(message.content).toMatch(/Jello/);
+      expect(message.read).toBe(false);
     });
 
-    it('does not break if room doesn\'t exist', function() {
-      store.dispatch({
+    it('marks message as read if created in currently active room', function() {
+      this.store.dispatch({
+        type: 'CHANGE_ROOM',
+        room: 'Dunder Mifflin'
+      });
+
+      this.store.dispatch({
         type: 'CREATE_MESSAGE',
-        room: 'Schrute Farms',
+        room: 'Dunder Mifflin',
         name: 'Dwight',
         content: '@Jim, stop putting my stuff in Jello!'
       });
 
-      var messages = store.getState().rooms[0].messages;
-      expect(messages.length).toBe(0);
+      var message = this.store.getState().messages[0];
+
+      expect(message.read).toBe(true);
     });
 
     it('does not add a message without a name', function() {
-      store.dispatch({
+      this.store.dispatch({
         type: 'CREATE_MESSAGE',
         room: 'Dunder Mifflin',
         content: '@Jim, stop putting my stuff in Jello!'
       });
 
-      var messages = store.getState().rooms[0].messages;
+      var messages = this.store.getState().messages;
       expect(messages.length).toBe(0);
     });
 
     it('does not add a message without content', function() {
-      store.dispatch({
+      this.store.dispatch({
         type: 'CREATE_MESSAGE',
         room: 'Dunder Mifflin',
         name: 'Dwight'
       });
 
-      var messages = store.getState().rooms[0].messages;
+      var messages = this.store.getState().messages;
+      expect(messages.length).toBe(0);
+    });
+
+    it('does not add a message without a room', function() {
+      this.store.dispatch({
+        type: 'CREATE_MESSAGE',
+        name: 'Dwight',
+        content: '@Jim, stop putting my stuff in Jello!'
+      });
+
+      var messages = this.store.getState().messages;
       expect(messages.length).toBe(0);
     });
   });
 
   describe('SEND_MESSAGE', function() {
-    it('creates a read message in the currently active room', function() {
+    beforeEach(function() {
+      this.store.dispatch({
+        type: 'CHANGE_ROOM',
+        room: 'Dunder Mifflin'
+      });
+    });
 
+    it('creates a read message in the currently active room', function() {
+      this.store.dispatch({
+        type: 'UPDATE_NAME',
+        name: 'Creed'
+      });
+
+      this.store.dispatch({
+        type: 'UPDATE_CONTENT',
+        content: 'If I can\'t scuba, what\'s this all been about?'
+      });
+
+      this.store.dispatch({
+        type: 'SEND_MESSAGE'
+      });
+
+      var message = this.store.getState().messages[0];
+
+      expect(message.room).toBe('Dunder Mifflin');
+      expect(message.content).toMatch(/scuba/);
+      expect(message.name).toBe('Creed');
+      expect(message.read).toBe(true);
     });
 
     it('does not create an empty message', function() {
+      this.store.dispatch({
+        type: 'UPDATE_NAME',
+        name: 'Creed'
+      });
 
+      this.store.dispatch({
+        type: 'SEND_MESSAGE'
+      });
+
+      expect(this.store.getState().messages.length).toBe(0);
     });
 
     it('does not create a message without a name', function() {
+      this.store.dispatch({
+        type: 'UPDATE_CONTENT',
+        content: 'If I can\'t scuba, what\'s this all been about?'
+      });
 
+      this.store.dispatch({
+        type: 'SEND_MESSAGE'
+      });
+
+      expect(this.store.getState().messages.length).toBe(0);
+    });
+  });
+
+  describe('CHANGE_ROOM', function() {
+    it('changes the active room', function() {
+      this.store.dispatch({
+        type: 'CHANGE_ROOM',
+        room: 'Dunder Mifflin'
+      });
+
+      expect(this.store.getState().room).toBe('Dunder Mifflin');
+    });
+
+    it('marks all messages in the active room as read', function() {
+      this.store.dispatch({
+        type: 'CREATE_MESSAGE',
+        room: 'Dunder Mifflin',
+        name: 'Dwight',
+        content: '@Jim, stop putting my stuff in Jello!'
+      });
+
+      this.store.dispatch({
+        type: 'CHANGE_ROOM',
+        room: 'Dunder Mifflin'
+      });
+
+      expect(this.store.getState().messages[0].read).toBe(true);
+    });
+
+    it('does not change rooms if name is undefined', function() {
+      this.store.dispatch({
+        type: 'CHANGE_ROOM',
+        room: 'Dunder Mifflin'
+      });
+
+      this.store.dispatch({
+        type: 'CHANGE_ROOM'
+      });
+
+      expect(this.store.getState().room).toBe('Dunder Mifflin');
     });
   });
 });

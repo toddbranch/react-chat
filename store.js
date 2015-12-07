@@ -1,97 +1,66 @@
-var lastMessageId = 0;
+var messageId = 0;
 
-function createMessage(name, content) {
-  lastMessageId += 1;
+function createMessage(name, content, room) {
+  messageId += 1;
+
   return {
-    id: lastMessageId,
+    id: messageId,
     name: name,
     content: content,
+    room: room,
     read: false
   };
 }
 
-function createRoom(name) {
-  return {
-    name: name,
-    messages: [],
-    active: false
-  };
-}
-
-function findRoom(name, rooms) {
-  return _.find(rooms, function(room) {
-    return room.name === name;
-  });
-}
-
-function findMessage(room, id) {
-  return _.find(room.messages, function(message) {
-    return message.id === id;
-  });
-}
-
-function findActiveRoom(rooms) {
-  return _.find(rooms, function(room) {
-    return room.active === true;
-  });
-}
-
 var reducer = function(state, action) {
   var defaultState = {
-    rooms: [],
-    name: undefined,
-    error: '',
-    message: '',
-    connected: false
+    messages: [],
+    name: '',
+    content: '',
+    room: undefined
   };
-  var room;
   var message;
 
   state = state || defaultState;
 
   switch (action.type) {
     case 'CREATE_MESSAGE':
-      room = findRoom(action.room, state.rooms);
-      if (room && action.name && action.content) {
-        room.messages.push(createMessage(action.name, action.content));
+      if (action.name && action.content && action.room) {
+        message = createMessage(action.name, action.content, action.room);
+        if (message.room === state.room) {
+          message.read = true;
+        }
+        state.messages.unshift(message);
       }
       break;
     case 'SEND_MESSAGE':
-      var activeRoom = findActiveRoom(state.rooms);
-      message = createMessage(state.name, state.message);
-      message.read = true;
-      activeRoom.messages.unshift(message);
-      break;
-    case 'CREATE_ROOM':
-      if (action.name && !findRoom(action.name, state.rooms)) {
-        room = createRoom(action.name);
-        state.rooms.push(room);
+      if (state.content && state.name) {
+        message = createMessage(state.name, state.content, state.room);
+        message.read = true;
+        state.messages.unshift(message);
       }
       break;
-    case 'UPDATE_MESSAGE':
-      state.message = action.message;
+    case 'UPDATE_CONTENT':
+      state.content = action.content;
       break;
     case 'UPDATE_NAME':
       state.name = action.name;
       break;
     case 'CHANGE_ROOM':
-      state.rooms = state.rooms.map(function(room) {
-        room.active = false;
-        return room;
-      });
-      room = findRoom(action.room, state.rooms);
-      room.active = true;
-      break;
-    case 'READ_MESSAGES':
-      room = findRoom(action.room, state.rooms);
-      room.messages = room.messages.map(function(message) {
-        message.read = true;
+      if (!action.room) {
+        break;
+      }
+
+      state.messages = state.messages.map(function(message) {
+        if (message.room === action.room) {
+          message.read = true;
+        }
+
         return message;
       });
+      state.room = action.room;
       break;
   }
 
   return state;
 };
-
-var store = Redux.createStore(reducer);
