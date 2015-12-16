@@ -3,14 +3,14 @@ var store = Redux.createStore(reducer);
 var Message = React.createClass({
   render: function() {
     return (
-      <div className="message">
+      <li className="list-group-item message">
         <div className="message-name">
           {this.props.message.name}
         </div>
         <div className="message-content">
           {this.props.message.content}
         </div>
-      </div>
+      </li>
     );
   }
 });
@@ -18,7 +18,7 @@ var Message = React.createClass({
 var Messages = React.createClass({
   render: function() {
     return (
-      <ul className="messages">
+      <ul className="list-group messages">
         {this.props.messages.map(function(message) {
           return (
             <Message message={message} key={message.id} />
@@ -32,6 +32,14 @@ var Messages = React.createClass({
 var Chat = React.createClass({
   render: function() {
     var room = this.props.room;
+    if (!room) {
+      return (
+        <div>
+          Select a room.
+        </div>
+      );
+    }
+
     var messages = _.filter(this.props.messages, function(message) {
       return message.room === room;
     });
@@ -39,23 +47,28 @@ var Chat = React.createClass({
     return (
       <div className="chat">
         <div className="message-fields">
-          <div className="name-box">
+          <div className="form-group name-box">
             <div>Name:</div>
             <input
+              className="form-control"
               type="text"
               value={this.props.name}
               onChange={this.props.updateName}
             />
           </div>
-          <div className="message-box">
+          <div className="form-group message-box">
             <div>Message:</div>
             <input
+              className="form-control"
               type="text"
               value={this.props.content}
               onChange={this.props.updateContent}
             />
-            <button onClick={this.props.sendMessage}>Send</button>
           </div>
+          <button
+            className="btn btn-primary"
+            onClick={this.props.sendMessage}
+          >Send</button>
         </div>
         <Messages
           messages={messages}
@@ -84,9 +97,9 @@ var Room = React.createClass({
         <div className="room-name">
           {room}
         </div>
-        <Message
+        <Messages
           className="recent"
-          message={messages[0]}
+          messages={[messages[0]]}
         />
         <div className="unread">
           {unread.length} unread
@@ -146,19 +159,6 @@ var Application = React.createClass({
   }
 });
 
-// this will be replaced with a call to the endpoint
-function getMessages() {
-  return [
-    {name: 'Jim', content: '@Dwight, what kind of bear is best?', room: 'Sales'},
-    {name: 'Dwight', content: '@Jim stupid question.', room: 'Sales'},
-    {name: 'Jim', content: '@Dwight false.  The answer is Black Bear.  Fact: bears eat beats.  Bears.  Beets.  Battlestar Gallactica.', room: 'Sales'},
-    {name: 'Dwight', content: '@Michael!', room: 'Sales'},
-    {name: 'Michael', content: 'Happy Birthday Jesus. Sorry your party sucked.', room: 'Party Planning'},
-    {name: 'Angela', content: 'Stop it @Michael!', room: 'Party Planning'},
-    {name: 'Phyllis', content: 'We\'re doing the best we can, @Michael.', room: 'Party Planning'},
-  ];
-}
-
 function updateName(e) {
   store.dispatch({
     type: 'UPDATE_NAME',
@@ -174,8 +174,12 @@ function updateContent(e) {
 }
 
 function sendMessage() {
-  store.dispatch({
-    type: 'SEND_MESSAGE'
+  var state = store.getState();
+
+  socket.emit('message', {
+    name: state.name,
+    content: state.content,
+    room: state.room
   });
 }
 
@@ -186,9 +190,7 @@ function changeRoom(room) {
   });
 }
 
-(function intializeStore() {
-  var messages = getMessages();
-
+function createMesssages(messages) {
   messages.forEach(function(message) {
     store.dispatch({
       type: 'CREATE_MESSAGE',
@@ -197,9 +199,10 @@ function changeRoom(room) {
       room: message.room
     });
   });
+}
 
-  changeRoom(messages[0].room);
-}());
+var socket = io();
+socket.on('messages', createMesssages);
 
 function render() {
   var state = store.getState();

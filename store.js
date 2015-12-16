@@ -33,13 +33,6 @@ var reducer = function(state, action) {
         state.messages.unshift(message);
       }
       break;
-    case 'SEND_MESSAGE':
-      if (state.content && state.name) {
-        message = createMessage(state.name, state.content, state.room);
-        message.read = true;
-        state.messages.unshift(message);
-      }
-      break;
     case 'UPDATE_CONTENT':
       state.content = action.content;
       break;
@@ -47,8 +40,8 @@ var reducer = function(state, action) {
       state.name = action.name;
       break;
     case 'CHANGE_ROOM':
-      if (!action.room) {
-        break;
+      if (action.room) {
+        state.room = action.room;
       }
 
       state.messages = state.messages.map(function(message) {
@@ -58,7 +51,6 @@ var reducer = function(state, action) {
 
         return message;
       });
-      state.room = action.room;
       break;
   }
 

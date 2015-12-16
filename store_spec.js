@@ -72,64 +72,6 @@ describe('store', function() {
     });
   });
 
-  describe('SEND_MESSAGE', function() {
-    beforeEach(function() {
-      this.store.dispatch({
-        type: 'CHANGE_ROOM',
-        room: 'Dunder Mifflin'
-      });
-    });
-
-    it('creates a read message in the currently active room', function() {
-      this.store.dispatch({
-        type: 'UPDATE_NAME',
-        name: 'Creed'
-      });
-
-      this.store.dispatch({
-        type: 'UPDATE_CONTENT',
-        content: 'If I can\'t scuba, what\'s this all been about?'
-      });
-
-      this.store.dispatch({
-        type: 'SEND_MESSAGE'
-      });
-
-      var message = this.store.getState().messages[0];
-
-      expect(message.room).toBe('Dunder Mifflin');
-      expect(message.content).toMatch(/scuba/);
-      expect(message.name).toBe('Creed');
-      expect(message.read).toBe(true);
-    });
-
-    it('does not create an empty message', function() {
-      this.store.dispatch({
-        type: 'UPDATE_NAME',
-        name: 'Creed'
-      });
-
-      this.store.dispatch({
-        type: 'SEND_MESSAGE'
-      });
-
-      expect(this.store.getState().messages.length).toBe(0);
-    });
-
-    it('does not create a message without a name', function() {
-      this.store.dispatch({
-        type: 'UPDATE_CONTENT',
-        content: 'If I can\'t scuba, what\'s this all been about?'
-      });
-
-      this.store.dispatch({
-        type: 'SEND_MESSAGE'
-      });
-
-      expect(this.store.getState().messages.length).toBe(0);
-    });
-  });
-
   describe('CHANGE_ROOM', function() {
     it('changes the active room', function() {
       this.store.dispatch({
